@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  digital-twin-backend:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONPATH=/app
+      - DATABASE_URL=postgresql://postgres:postgres@timescaledb:5432/twinlift
+    depends_on:
+      - timescaledb
+    restart: always
+
+  digital-twin-frontend:
+    image: python:3.12-slim
+    working_dir: /app/frontend
+    volumes:
+      - ./frontend:/app/frontend
+    command: python -m http.server 3000
+    ports:
+      - "3000:3000"
+    restart: always
+
+  timescaledb:
+    image: timescale/timescaledb:latest-pg14
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=twinlift
+    ports:
+      - "5432:5432"
+    volumes:
+      - timescaledb_data:/var/lib/postgresql/data
+    restart: always
+
+volumes:
+  timescaledb_data:

@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SRPVFDTelemetry",
+  "type": "object",
+  "properties": {
+    "well_id": { "type": "string" },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "spm": { "type": "number", "minimum": 0 },
+    "vfd_frequency_hz": { "type": "number", "minimum": 0 },
+    "motor_current_amp": { "type": "number", "minimum": 0 },
+    "motor_power_kw": { "type": "number", "minimum": 0 },
+    "peak_polished_rod_load_lbs": { "type": "number" },
+    "min_polished_rod_load_lbs": { "type": "number" }
+  },
+  "required": ["well_id", "timestamp", "spm"]
+}

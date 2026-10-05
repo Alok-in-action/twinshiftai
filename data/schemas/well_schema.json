@@ -1,0 +1,19 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "WellAndCompletionGeometry",
+  "type": "object",
+  "properties": {
+    "well_id": { "type": "string" },
+    "well_name": { "type": "string" },
+    "surface_latitude": { "type": "number" },
+    "surface_longitude": { "type": "number" },
+    "measured_depth_m": { "type": "number", "minimum": 0 },
+    "true_vertical_depth_m": { "type": "number", "minimum": 0 },
+    "casing_outer_diameter_m": { "type": "number", "minimum": 0 },
+    "tubing_inner_diameter_m": { "type": "number", "minimum": 0 },
+    "pump_depth_m": { "type": "number", "minimum": 0 },
+    "perforation_top_m": { "type": "number", "minimum": 0 },
+    "perforation_bottom_m": { "type": "number", "minimum": 0 }
+  },
+  "required": ["well_id", "measured_depth_m", "tubing_inner_diameter_m", "pump_depth_m"]
+}

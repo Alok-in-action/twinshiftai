@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CSSCycleRecord",
+  "type": "object",
+  "properties": {
+    "well_id": { "type": "string" },
+    "cycle_number": { "type": "integer", "minimum": 1 },
+    "injection_start_time": { "type": "string", "format": "date-time" },
+    "soak_start_time": { "type": "string", "format": "date-time" },
+    "production_start_time": { "type": "string", "format": "date-time" },
+    "cutoff_time": { "type": ["string", "null"], "format": "date-time" },
+    "total_steam_injected_m3_cwe": { "type": "number", "minimum": 0 },
+    "avg_steam_quality": { "type": "number", "minimum": 0, "maximum": 1 }
+  },
+  "required": ["well_id", "cycle_number", "injection_start_time", "soak_start_time", "production_start_time"]
+}

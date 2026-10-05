@@ -1,0 +1,27 @@
+{
+  "limits_version": "1.0.0",
+  "approved_by": "Lead Petroleum Engineer",
+  "well_limits": {
+    "max_peak_polished_rod_load_lbs": 25000.0,
+    "min_polished_rod_load_lbs": 1000.0,
+    "max_spm": 12.0,
+    "min_spm": 1.0,
+    "max_stroke_length_in": 144.0,
+    "min_stroke_length_in": 24.0,
+    "max_steam_injection_rate_m3d": 200.0,
+    "max_steam_pressure_kpa": 12000.0,
+    "max_steam_temperature_c": 325.0,
+    "max_goodman_stress_ratio": 0.90,
+    "min_rod_floating_margin_lbs": 500.0
+  },
+  "required_parameters": [
+    "well_id",
+    "pump_depth_m",
+    "tubing_inner_diameter_m",
+    "rod_string_spec",
+    "crank_radius_m",
+    "fluid_viscosity_table",
+    "reservoir_initial_temp_c",
+    "reservoir_initial_pressure_kpa"
+  ]
+}

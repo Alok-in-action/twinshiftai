@@ -1,0 +1,15 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SteamInjectionTelemetry",
+  "type": "object",
+  "properties": {
+    "well_id": { "type": "string" },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "steam_rate_m3d_cwe": { "type": "number", "minimum": 0 },
+    "steam_mass_kg_s": { "type": "number", "minimum": 0 },
+    "steam_quality": { "type": "number", "minimum": 0, "maximum": 1 },
+    "injection_pressure_kpa": { "type": "number", "minimum": 0 },
+    "injection_temperature_c": { "type": "number" }
+  },
+  "required": ["well_id", "timestamp", "steam_rate_m3d_cwe", "steam_quality", "injection_pressure_kpa"]
+}

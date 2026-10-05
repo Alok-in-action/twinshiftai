@@ -1,0 +1,15 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ApprovedOperatingConstraints",
+  "type": "object",
+  "properties": {
+    "limits_version": { "type": "string" },
+    "approved_by": { "type": "string" },
+    "well_limits": { "type": "object" },
+    "required_parameters": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "required": ["limits_version", "well_limits", "required_parameters"]
+}

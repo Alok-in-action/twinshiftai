@@ -1,0 +1,26 @@
+# Unit definitions and standard conversions for Baghewala CSS-SRP Twin
+units:
+  pressure:
+    canonical: "Pa"
+    allowed: ["psi", "kPa", "MPa", "bar"]
+  temperature:
+    canonical: "kelvin"
+    allowed: ["degC", "degF", "degR"]
+  length:
+    canonical: "meter"
+    allowed: ["ft", "inch"]
+  volume:
+    canonical: "m**3"
+    allowed: ["bbl"]
+  rate:
+    canonical: "m**3/day"
+    allowed: ["bbl/day"]
+  mass:
+    canonical: "kg"
+    allowed: ["ton", "lb"]
+  viscosity:
+    canonical: "Pa*s"
+    allowed: ["cP"]
+  time:
+    canonical: "day"
+    allowed: ["hour", "minute", "second"]

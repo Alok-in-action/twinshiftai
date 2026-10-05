@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>TwinLift AI - 3D CSS Simulator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #0f172a; color: white; font-family: 'Inter', sans-serif; }
+        #canvas-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+        
+        /* UI Overlays */
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none; padding: 20px; box-sizing: border-box; }
+        .panel { background: rgba(30, 41, 59, 0.85); border: 1px solid #334155; border-radius: 12px; padding: 20px; backdrop-filter: blur(8px); pointer-events: auto; transition: opacity 0.5s; opacity: 0; }
+        
+        #top-bar { display: flex; justify-content: space-between; align-items: center; opacity: 1; margin-bottom: 20px;}
+        .title { font-size: 24px; font-weight: bold; color: #38bdf8; text-shadow: 0 0 10px rgba(56, 189, 248, 0.5); }
+        .phase-indicator { font-size: 20px; font-weight: bold; background: #2563eb; padding: 8px 16px; border-radius: 20px; }
+        
+        #left-panel { position: absolute; left: 20px; top: 80px; width: 300px; }
+        #right-panel { position: absolute; right: 20px; top: 80px; width: 350px; }
+        
+        .metric { margin-bottom: 15px; }
+        .metric-label { font-size: 12px; color: #94a3b8; text-transform: uppercase; }
+        .metric-value { font-size: 24px; font-weight: bold; font-variant-numeric: tabular-nums; }
+        
+        #dynacard { width: 100%; height: 250px; margin-top: 10px; background: rgba(0,0,0,0.5); border-radius: 8px; }
+        
+        #alert-box { position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); text-align: center; font-size: 20px; font-weight: bold; padding: 15px 30px; border-radius: 8px; opacity: 0; }
+        .alert-danger { background: rgba(239, 68, 68, 0.9); border: 1px solid #f87171; box-shadow: 0 0 20px rgba(239, 68, 68, 0.5); }
+        .alert-success { background: rgba(34, 197, 94, 0.9); border: 1px solid #4ade80; box-shadow: 0 0 20px rgba(34, 197, 94, 0.5); }
+        
+        #disclaimer { position: absolute; bottom: 10px; left: 20px; font-size: 10px; color: #64748b; }
+        
+        #play-btn { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 20px 40px; font-size: 24px; background: #38bdf8; color: #0f172a; border: none; border-radius: 8px; cursor: pointer; pointer-events: auto; z-index: 100;}
+        #play-btn:hover { background: #7dd3fc; }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    
+    <div id="ui-layer">
+        <button id="play-btn">Start Simulation Video</button>
+        
+        <div id="top-bar" class="panel">
+            <div class="title">TwinLift AI</div>
+            <div class="phase-indicator" id="phase-badge">System Initializing</div>
+            <div style="font-family: monospace;" id="timer">T+ 00:00</div>
+        </div>
+        
+        <div id="left-panel" class="panel">
+            <h3>Reservoir Status</h3>
+            <div class="metric"><div class="metric-label">Steam Injected</div><div class="metric-value" id="val-steam">0 tons</div></div>
+            <div class="metric"><div class="metric-label">Zone Temp</div><div class="metric-value" id="val-temp">45 °C</div></div>
+            <div class="metric"><div class="metric-label">Oil Viscosity</div><div class="metric-value" id="val-visc">4,500 cP</div></div>
+            <div class="metric"><div class="metric-label">Wellhead Press.</div><div class="metric-value" id="val-pres">150 psi</div></div>
+        </div>
+        
+        <div id="right-panel" class="panel">
+            <h3>Surface Operations</h3>
+            <div class="metric"><div class="metric-label">Pump Status</div><div class="metric-value" id="val-pump" style="color: #94a3b8">STOPPED</div></div>
+            <div class="metric"><div class="metric-label">Speed (SPM)</div><div class="metric-value" id="val-spm">0.0</div></div>
+            <div class="metric"><div class="metric-label">Rod Stress</div><div class="metric-value" id="val-stress">0%</div></div>
+            <div class="metric"><div class="metric-label">Fillage</div><div class="metric-value" id="val-fillage">0%</div></div>
+            
+            <div id="dynacard"></div>
+        </div>
+        
+        <div id="alert-box"></div>
+        
+        <div id="disclaimer">* Simulated from field-calibrated model. Not actual real-time SCADA data.</div>
+    </div>
+
+    <script>
+        // --- 3D Scene Setup ---
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x0f172a, 0.02);
+        
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(20, 10, 40);
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setClearColor(0x0f172a, 1);
+        container.appendChild(renderer.domElement);
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(10, 20, 10);
+        scene.add(dirLight);
+
+        // --- Materials ---
+        const dirtMat = new THREE.MeshPhongMaterial({ color: 0x3f2e20, transparent: true, opacity: 0.8 });
+        const casingMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.8, roughness: 0.2 });
+        const tubingMat = new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.9, roughness: 0.1 });
+        const rodMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, metalness: 1.0, roughness: 0.1 });
+        const steamMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.0 });
+        const heatMat = new THREE.MeshBasicMaterial({ color: 0xef4444, transparent: true, opacity: 0.0, blending: THREE.AdditiveBlending });
+
+        // --- Objects ---
+        const groundGroup = new THREE.Group();
+        scene.add(groundGroup);
+        
+        // Earth Cutaway
+        const earthGeo = new THREE.BoxGeometry(30, 40, 30);
+        const earth = new THREE.Mesh(earthGeo, dirtMat);
+        earth.position.y = -20;
+        groundGroup.add(earth);
+
+        // Grid helper on top
+        const gridHelper = new THREE.GridHelper(30, 10, 0x334155, 0x1e293b);
+        groundGroup.add(gridHelper);
+
+        // Wellbore Casing & Tubing
+        const casingGeo = new THREE.CylinderGeometry(0.5, 0.5, 38, 16);
+        const casing = new THREE.Mesh(casingGeo, casingMat);
+        casing.position.y = -19;
+        groundGroup.add(casing);
+
+        const tubingGeo = new THREE.CylinderGeometry(0.2, 0.2, 39, 16);
+        const tubing = new THREE.Mesh(tubingGeo, tubingMat);
+        tubing.position.y = -19.5;
+        groundGroup.add(tubing);
+
+        // Sucker Rod
+        const rodGeo = new THREE.CylinderGeometry(0.05, 0.05, 40, 8);
+        const rod = new THREE.Mesh(rodGeo, rodMat);
+        rod.position.y = -20;
+        groundGroup.add(rod);
+        
+        // Plunger (attached to rod bottom)
+        const plungerGeo = new THREE.CylinderGeometry(0.18, 0.18, 1.5, 16);
+        const plunger = new THREE.Mesh(plungerGeo, rodMat);
+        plunger.position.y = -19;
+        rod.add(plunger);
+
+        // Steam Plume
+        const steamGeo = new THREE.CylinderGeometry(0.8, 0.8, 35, 16);
+        const steam = new THREE.Mesh(steamGeo, steamMat);
+        steam.position.y = -18;
+        groundGroup.add(steam);
+
+        // Heated Zone (Halo in reservoir)
+        const heatGeo = new THREE.SphereGeometry(3, 32, 32);
+        const heatHalo = new THREE.Mesh(heatGeo, heatMat);
+        heatHalo.position.y = -35;
+        groundGroup.add(heatHalo);
+
+        // Simple Pumpjack
+        const pumpGroup = new THREE.Group();
+        pumpGroup.position.set(0, 0, 0);
+        scene.add(pumpGroup);
+        
+        const baseMesh = new THREE.Mesh(new THREE.BoxGeometry(6, 1, 2), casingMat);
+        baseMesh.position.set(-2, 0.5, 0);
+        pumpGroup.add(baseMesh);
+        
+        const sampsonPost = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.5, 5), casingMat);
+        sampsonPost.position.set(-2, 3, 0);
+        pumpGroup.add(sampsonPost);
+
+        const walkingBeam = new THREE.Mesh(new THREE.BoxGeometry(10, 0.5, 0.5), casingMat);
+        walkingBeam.position.set(-2, 5.5, 0);
+        pumpGroup.add(walkingBeam);
+        
+        const horseHead = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 0.5), casingMat);
+        horseHead.rotation.x = Math.PI / 2;
+        horseHead.position.set(3, 5.5, 0);
+        pumpGroup.add(horseHead);
+
+        // --- Animation State ---
+        let simState = {
+            phase: 'overview',
+            time: 0,
+            steam: 0,
+            temp: 45,
+            visc: 4500,
+            press: 150,
+            spm: 0,
+            rodPos: 0,
+            fillage: 0,
+            stress: 0,
+            floating: false
+        };
+
+        // --- Plotly Dynacard ---
+        let dynaX = [];
+        let dynaY = [];
+        Plotly.newPlot('dynacard', [{ x: [], y: [], mode: 'lines', line: {color: '#4ade80'} }], {
+            margin: {l: 30, r: 10, t: 10, b: 20},
+            paper_bgcolor: 'rgba(0,0,0,0)',
+            plot_bgcolor: 'rgba(0,0,0,0)',
+            xaxis: {title: 'Position', color: '#94a3b8', showgrid: false},
+            yaxis: {title: 'Load', color: '#94a3b8', showgrid: false}
+        }, {staticPlot: true});
+
+        // --- Render Loop ---
+        let lastTime = 0;
+        function animate(time) {
+            requestAnimationFrame(animate);
+            let dt = (time - lastTime) / 1000;
+            lastTime = time;
+            
+            // Pumpjack Motion
+            if (simState.spm > 0) {
+                const freq = simState.spm / 60; // Hz
+                simState.rodPos = Math.sin(time * 0.001 * Math.PI * 2 * freq);
+                
+                // Animate Beam
+                walkingBeam.rotation.z = simState.rodPos * 0.2;
+                horseHead.position.y = 5.5 + Math.sin(walkingBeam.rotation.z)*5;
+                
+                // Animate Rod
+                let rodStroke = simState.rodPos * 1.5;
+                
+                // Rod Floating Lag Effect
+                if (simState.floating && simState.rodPos < 0) {
+                     // Rod falls slower than the pumpjack
+                     rodStroke = Math.max(rodStroke, -0.5); 
+                     rod.children[0].material.color.setHex(0xef4444); // Red plunger
+                } else {
+                     rod.children[0].material.color.setHex(0xfacc15); // Normal
+                }
+                rod.position.y = -20 + rodStroke;
+                
+                // Live Dynacard Generation
+                if (dynaX.length > 100) { dynaX.shift(); dynaY.shift(); }
+                let pos = (simState.rodPos + 1) / 2; // 0 to 1
+                let load = 10000; // Baseline
+                if (simState.rodPos > 0) load = 18000; // Upstroke load
+                else load = 8000; // Downstroke
+                
+                if (simState.floating && simState.rodPos < -0.3) {
+                    load = 2000; // Drops to near zero due to float
+                }
+                
+                // Add noise
+                load += (Math.random() - 0.5) * 500;
+                
+                dynaX.push(pos);
+                dynaY.push(load);
+                Plotly.update('dynacard', {x: [dynaX], y: [dynaY]});
+            } else {
+                dynaX = []; dynaY = [];
+            }
+            
+            // Update UI
+            document.getElementById('val-steam').innerText = Math.round(simState.steam) + " tons";
+            document.getElementById('val-temp').innerText = Math.round(simState.temp) + " °C";
+            document.getElementById('val-visc').innerText = Math.round(simState.visc) + " cP";
+            document.getElementById('val-pres').innerText = Math.round(simState.press) + " psi";
+            document.getElementById('val-spm').innerText = simState.spm.toFixed(1);
+            document.getElementById('val-stress').innerText = Math.round(simState.stress) + "%";
+            document.getElementById('val-fillage').innerText = Math.round(simState.fillage) + "%";
+            
+            // Format Time (MM:SS)
+            let mins = Math.floor(simState.time / 60);
+            let secs = Math.floor(simState.time % 60);
+            document.getElementById('timer').innerText = `T+ ${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            
+            renderer.render(scene, camera);
+        }
+        
+        // --- Choreography ---
+        document.getElementById('play-btn').addEventListener('click', () => {
+            document.getElementById('play-btn').style.display = 'none';
+            document.querySelectorAll('.panel').forEach(p => p.style.opacity = 1);
+            
+            const tl = gsap.timeline();
+            
+            // 1. Overview (0-10s)
+            tl.to(simState, { time: 10, duration: 10, ease: "none",
+                onStart: () => { document.getElementById('phase-badge').innerText = 'Field Overview'; }
+            }, 0);
+            tl.to(camera.position, { y: -10, z: 30, duration: 8, ease: "power2.inOut" }, 1);
+            
+            // 2. Injection (10-30s)
+            tl.to(simState, { time: 30, duration: 20, ease: "none",
+                onStart: () => { 
+                    document.getElementById('phase-badge').innerText = 'Phase 1: Steam Injection';
+                    document.getElementById('phase-badge').style.background = '#ea580c';
+                }
+            }, 10);
+            tl.to(steam.material, { opacity: 0.6, duration: 2 }, 10); // Steam flow
+            tl.to(simState, { steam: 3000, temp: 250, visc: 15, press: 800, duration: 20 }, 10);
+            tl.to(heatHalo.scale, { x: 3, y: 3, z: 3, duration: 20 }, 10); // Heat halo grows
+            tl.to(heatHalo.material, { opacity: 0.8, duration: 20 }, 10);
+            
+            // 3. Soak (30-40s)
+            tl.to(simState, { time: 40, duration: 10, ease: "none",
+                onStart: () => { 
+                    document.getElementById('phase-badge').innerText = 'Phase 2: Soak';
+                    document.getElementById('phase-badge').style.background = '#ca8a04';
+                }
+            }, 30);
+            tl.to(steam.material, { opacity: 0, duration: 1 }, 30); // Stop steam
+            tl.to(simState, { press: 400, temp: 230, visc: 20, duration: 10 }, 30);
+            tl.to(heatHalo.scale, { x: 4, y: 3.5, z: 4, duration: 10 }, 30); // Halo diffuses
+            tl.to(heatHalo.material, { opacity: 0.6, duration: 10 }, 30);
+            
+            // 4. Production Normal (40-65s)
+            tl.to(simState, { time: 65, duration: 25, ease: "none",
+                onStart: () => { 
+                    document.getElementById('phase-badge').innerText = 'Phase 3: Production (Healthy)';
+                    document.getElementById('phase-badge').style.background = '#16a34a';
+                    document.getElementById('val-pump').innerText = 'RUNNING';
+                    document.getElementById('val-pump').style.color = '#4ade80';
+                }
+            }, 40);
+            tl.to(simState, { spm: 8.0, fillage: 85, stress: 65, duration: 2 }, 40);
+            tl.to(camera.position, { y: -25, z: 25, duration: 5, ease: "power2.inOut" }, 40); // Zoom to pump
+            
+            // 5. Problem: Rod Floating (65-85s)
+            tl.to(simState, { time: 85, duration: 20, ease: "none",
+                onStart: () => { 
+                    document.getElementById('phase-badge').innerText = 'Phase 3: Production (Issue Detected)';
+                    document.getElementById('phase-badge').style.background = '#b91c1c';
+                    const alert = document.getElementById('alert-box');
+                    alert.className = 'alert-danger';
+                    alert.innerText = 'WARNING: Rod Floating Detected. High Impact Loads.';
+                    alert.style.opacity = 1;
+                    simState.floating = true;
+                    Plotly.update('dynacard', {}, { 'line.color': '#ef4444' }); // Red card
+                }
+            }, 65);
+            tl.to(simState, { temp: 80, visc: 1200, fillage: 45, stress: 95, duration: 15 }, 65);
+            tl.to(heatHalo.scale, { x: 1, y: 1, z: 1, duration: 15 }, 65); // Heat dissipates
+            tl.to(heatHalo.material, { opacity: 0.2, duration: 15 }, 65);
+            
+            // 6. AI Correction (85-110s)
+            tl.to(simState, { time: 110, duration: 25, ease: "none",
+                onStart: () => { 
+                    document.getElementById('phase-badge').innerText = 'AI Edge Correction Active';
+                    document.getElementById('phase-badge').style.background = '#0284c7';
+                    const alert = document.getElementById('alert-box');
+                    alert.className = 'alert-success';
+                    alert.innerText = 'AI OPTIMIZATION: Reduce SPM 8.0 → 6.0, Floating Risk 82% → 5%';
+                    simState.floating = false;
+                    Plotly.update('dynacard', {}, { 'line.color': '#4ade80' }); // Green card
+                }
+            }, 85);
+            tl.to(simState, { spm: 6.0, duration: 2 }, 86);
+            tl.to(simState, { fillage: 92, stress: 55, duration: 5 }, 88);
+            
+            // 7. Results Panel (110-125s)
+            tl.to(simState, { time: 125, duration: 15, ease: "none",
+                onStart: () => { 
+                    document.getElementById('phase-badge').innerText = 'Cycle Complete - Optimization Results';
+                    document.getElementById('phase-badge').style.background = '#4f46e5';
+                    document.getElementById('val-pump').innerText = 'STOPPED';
+                    document.getElementById('val-pump').style.color = '#94a3b8';
+                    const alert = document.getElementById('alert-box');
+                    alert.innerText = 'Cycle KPIs: 15% lower SOR, zero failures, +12% Net Revenue';
+                }
+            }, 110);
+            tl.to(simState, { spm: 0, duration: 2 }, 110);
+            tl.to(camera.position, { y: 10, z: 40, duration: 5, ease: "power2.inOut" }, 110); // Zoom out
+        });
+
+        // Start render loop
+        animate(0);
+        
+        // Handle Resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>

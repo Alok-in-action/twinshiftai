@@ -1,0 +1,33 @@
+# Example operational limits for optimization boundaries
+constraints:
+  - parameter: "max_injection_pressure"
+    lower_limit: 0.0
+    upper_limit: 8000000.0
+    unit: "Pa"
+    source: "Baghewala field rule 2024"
+    approval_date: "2024-01-01"
+    well_applicability: ["ALL"]
+  
+  - parameter: "max_steam_rate"
+    lower_limit: 0.0
+    upper_limit: 150.0
+    unit: "m**3/day"
+    source: "Boiler capacity constraint"
+    approval_date: "2024-01-01"
+    well_applicability: ["ALL"]
+    
+  - parameter: "max_spm"
+    lower_limit: 1.0
+    upper_limit: 8.0
+    unit: "1/minute"
+    source: "SRP structural limit"
+    approval_date: "2024-01-01"
+    well_applicability: ["ALL"]
+
+  - parameter: "min_soak_time"
+    lower_limit: 3.0
+    upper_limit: 30.0
+    unit: "day"
+    source: "Reservoir engineering guideline"
+    approval_date: "2024-01-01"
+    well_applicability: ["ALL"]

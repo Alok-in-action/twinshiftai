@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "EquipmentSpecifications",
+  "type": "object",
+  "properties": {
+    "well_id": { "type": "string" },
+    "unit_geometry_type": { "type": "string" },
+    "crank_radius_m": { "type": "number", "minimum": 0 },
+    "stroke_length_in": { "type": "number", "minimum": 0 },
+    "pump_plunger_diameter_in": { "type": "number", "minimum": 0 },
+    "rod_string_sections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "section_index": { "type": "integer" },
+          "rod_diameter_in": { "type": "number", "minimum": 0 },
+          "length_m": { "type": "number", "minimum": 0 },
+          "material": { "type": "string" },
+          "density_kg_m3": { "type": "number", "minimum": 0 },
+          "elastic_modulus_pa": { "type": "number", "minimum": 0 }
+        },
+        "required": ["section_index", "rod_diameter_in", "length_m"]
+      }
+    }
+  },
+  "required": ["well_id", "pump_plunger_diameter_in", "rod_string_sections"]
+}
